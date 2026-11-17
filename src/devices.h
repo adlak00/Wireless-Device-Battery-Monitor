@@ -23,5 +23,11 @@ struct DeviceStatus {
 // Queries every supported device. Blocking (can take a second or two); call from a worker thread.
 std::vector<DeviceStatus> PollAllDevices();
 
+// Logitech G435 on the 046D:0ACB dongle: every battery read briefly stops audio (about 0.6 s), so
+// reads are hourly and can be paused from the tray menu.
+void G435AcbSetPaused(bool on);
+bool G435AcbPaused();
+void G435AcbForceRead();  // the next poll reads it even if the hourly read is not due
+
 // Prints every HID collection (for adding support for new devices).
 std::wstring DumpHidCollections();

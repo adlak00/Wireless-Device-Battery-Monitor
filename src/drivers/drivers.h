@@ -76,6 +76,7 @@ void PollAtkBitmouse(PollContext& ctx);  // ATK / VXE NK NANO dongle 373B:1216 (
 void PollKysona(PollContext& ctx);    // also Pulsar, ATK / VXE, Hitscan Hyperlight
 void PollHyperX(PollContext& ctx);
 void PollLogitechG435(PollContext& ctx);  // G435 headset on the 046D:0ADF dongle (not HID++)
+void PollLogitechG435Acb(PollContext& ctx);  // G435 headset on the older 046D:0ACB dongle (bridge report 6)
 void PollLogitech(PollContext& ctx);
 void PollRazer(PollContext& ctx);
 void PollSteelSeries(PollContext& ctx);
@@ -91,7 +92,7 @@ void PollPhoneLink(PollContext& ctx);  // phone linked with Microsoft Phone Link
 void PollGalaxyBuds(PollContext& ctx); // Samsung Galaxy Buds (Bluetooth RFCOMM, not HID)
 void PollMoondrop(PollContext& ctx);   // MOONDROP GM01 Pro headset (WalkPlay 2.4 GHz dongle)
 // Fallbacks.
-void PollHeadsetControl(PollContext& ctx);  // only if headsetcontrol.exe is installed
+// void PollHeadsetControl(PollContext& ctx);  // HARDENED: removed (launched an external .exe)
 void PollGenericHid(PollContext& ctx);
 void PollBluetooth(PollContext& ctx);
 void PollXInput(PollContext& ctx);

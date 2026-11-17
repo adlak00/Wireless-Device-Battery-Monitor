@@ -142,8 +142,8 @@ void PollGalaxyBuds(PollContext& ctx) {
         // The tray shows the lower of the two earbuds; the tooltip lists all three parts.
         if (st.left >= 0 && st.right >= 0) s.percent = st.left < st.right ? st.left : st.right;
         else s.percent = st.left >= 0 ? st.left : st.right;
-        s.detail = L"L " + Pct(st.left) + L", R " + Pct(st.right);
-        if (st.caseLevel >= 0) s.detail += L", case " + Pct(st.caseLevel);
+        s.detail = L"L " + Pct(st.left) + L", P " + Pct(st.right);
+        if (st.caseLevel >= 0) s.detail += L", etui " + Pct(st.caseLevel);
         s.graceSec = 180;  // a busy link (Galaxy Buds app open) should not make them flicker
         ctx.out.push_back(s);
     }

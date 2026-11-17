@@ -77,6 +77,7 @@ std::vector<DeviceStatus> PollAllDevices() {
     PollRazerHeadsets(ctx);  // before the generic Razer driver, which shares the vendor id
     PollHyperX(ctx);
     PollLogitechG435(ctx);  // before the HID++ driver, which shares the vendor id
+    PollLogitechG435Acb(ctx);  // older G435 dongle, also before the HID++ driver
     PollLogitech(ctx);
     PollRazer(ctx);
     PollSteelSeries(ctx);
@@ -91,7 +92,7 @@ std::vector<DeviceStatus> PollAllDevices() {
     PollPhoneLink(ctx);
     PollGalaxyBuds(ctx);  // before the Bluetooth fallback, which skips devices already listed by name
     PollMoondrop(ctx);
-    PollHeadsetControl(ctx);
+    // PollHeadsetControl(ctx);  // HARDENED: external headsetcontrol.exe bridge disabled
     PollBluetooth(ctx);   // before the generic HID check: Windows' own level wins for the same device
     PollGenericHid(ctx);
     PollXInput(ctx);

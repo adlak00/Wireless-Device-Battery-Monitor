@@ -27,7 +27,7 @@ constexpr int LOW_BATTERY = 15;
 constexpr UINT PLACEHOLDER_ID = 1;
 
 enum MenuId : UINT {
-    ID_REFRESH = 100, ID_AUTOSTART, ID_HIDE_LAST_KNOWN, ID_WIDGET_BACKGROUND, ID_EXIT, ID_MODE_WIDGET, ID_MODE_TRAY,
+    ID_REFRESH = 100, ID_AUTOSTART, ID_HIDE_LAST_KNOWN, ID_WIDGET_BACKGROUND, ID_EXIT, ID_MODE_WIDGET, ID_MODE_TRAY, ID_PAUSE_G435,
     ID_DEVICE_FIRST = 1000
 };
 
@@ -136,6 +136,8 @@ bool LoadHideLastKnown() { return LoadBoolSetting(L"HideLastKnownDevices", false
 void SaveHideLastKnown(bool on) { SaveBoolSetting(L"HideLastKnownDevices", on); }
 bool LoadWidgetBackground() { return LoadBoolSetting(L"WidgetBackground", false); }
 void SaveWidgetBackground(bool on) { SaveBoolSetting(L"WidgetBackground", on); }
+bool LoadPauseG435() { return LoadBoolSetting(L"PauseG435Reads", false); }
+void SavePauseG435(bool on) { SaveBoolSetting(L"PauseG435Reads", on); }
 
 bool AutostartEnabled() {
     wchar_t buf[MAX_PATH * 2];
@@ -274,17 +276,47 @@ void CopyTip(wchar_t* dst, size_t cap, const std::wstring& s) {
     dst[cap - 1] = 0;
 }
 
+// Polish UI. Drivers keep their English labels (some compare them), so they are translated here,
+// only for display.
+std::wstring Replace(std::wstring s, const wchar_t* from, const wchar_t* to) {
+    std::wstring f = from;
+    for (size_t i = s.find(f); i != std::wstring::npos; i = s.find(f, i + wcslen(to))) s.replace(i, f.size(), to);
+    return s;
+}
+
+std::wstring TrVia(std::wstring v) {
+    static const wchar_t* map[][2] = {
+        { L"2.4 GHz receiver", L"odbiornik 2,4 GHz" }, { L"2.4 GHz dongle", L"odbiornik 2,4 GHz" },
+        { L"USB cable", L"kabel USB" },                { L"Corsair receiver", L"odbiornik Corsair" },
+        { L"Razer receiver", L"odbiornik Razer" },     { L"Logitech receiver", L"odbiornik Logitech" },
+        { L"Jabra Link dongle", L"odbiornik Jabra Link" }, { L"UWB base station", L"stacja bazowa UWB" },
+        { L"Wireless adapter", L"adapter bezprzewodowy" }, { L" or ", L" lub " },
+    };
+    for (auto& m : map) v = Replace(v, m[0], m[1]);
+    return v;
+}
+
+std::wstring TrLevel(const std::wstring& l) {
+    if (l == L"Full") return L"Pełna";
+    if (l == L"Good") return L"Dobra";
+    if (l == L"Medium") return L"Średnia";
+    if (l == L"Low") return L"Niska";
+    if (l == L"Critical") return L"Krytyczna";
+    if (l == L"Empty") return L"Pusta";
+    return l;
+}
+
 std::wstring StatusText(const TrayEntry& e) {
     const auto& s = e.st;
-    if (!s.connected) return L"off / not connected";
+    if (!s.connected) return L"wyłączone / niepołączone";
     std::wstring t;
-    if (!s.levelText.empty() && s.percent >= 0) t = s.levelText;
+    if (!s.levelText.empty() && s.percent >= 0) t = TrLevel(s.levelText);
     else if (s.percent >= 0) t = std::to_wstring(s.percent) + L"%";
-    else if (e.lastPct >= 0) t = std::to_wstring(e.lastPct) + L"% (last known)";
-    else t = L"unknown";
+    else if (e.lastPct >= 0) t = std::to_wstring(e.lastPct) + L"% (ostatnia znana wartość)";
+    else t = L"nieznany";
     if (!s.detail.empty() && s.percent >= 0) t += L" (" + s.detail + L")";
-    if (s.charging) t += L", charging";
-    if (s.asleep) t += L", asleep";
+    if (s.charging) t += L", ładowanie";
+    if (s.asleep) t += L", uśpione";
     return t;
 }
 
@@ -326,7 +358,7 @@ void UpdatePlaceholder() {
     for (auto& [k, e] : g_entries) any |= e.added;
     if (!any && !g_placeholder) {
         if (!g_placeholderIcon) g_placeholderIcon = RenderIcon(L"-", -1, Foreground(), Foreground(), true);
-        TrayCall(NIM_ADD, PLACEHOLDER_ID, g_placeholderIcon, L"Wireless Battery\nNo devices with battery info found");
+        TrayCall(NIM_ADD, PLACEHOLDER_ID, g_placeholderIcon, L"Wireless Battery\nNie znaleziono urządzeń z informacją o baterii");
         g_placeholder = true;
     } else if (any && g_placeholder) {
         TrayDelete(PLACEHOLDER_ID);
@@ -356,8 +388,8 @@ void ApplyEntry(TrayEntry& e) {
     if (s.charging || shown > LOW_BATTERY + 10) e.lowWarned = false;
     if (!s.charging && s.percent >= 0 && s.percent <= LOW_BATTERY && !e.lowWarned) {
         e.lowWarned = true;
-        infoTitle = L"Low battery";
-        info = s.name + L" is at " + std::to_wstring(s.percent) + L"%";
+        infoTitle = L"Słaba bateria";
+        info = s.name + L": zostało " + std::to_wstring(s.percent) + L"% baterii";
     }
     TrayCall(e.added ? NIM_MODIFY : NIM_ADD, e.uid, e.icon, tip, infoTitle, info);
     e.added = true;
@@ -389,7 +421,7 @@ void UpdateWidget() {
         WidgetItem it;
         it.kind = e->st.kind;
         it.percent = e->st.percent >= 0 ? e->st.percent : e->lastPct;
-        if (e->st.percent >= 0) it.text = e->st.levelText;
+        if (e->st.percent >= 0) it.text = TrLevel(e->st.levelText);
         it.charging = e->st.charging;
         it.dim = e->st.percent < 0;
         it.low = !it.charging && it.percent >= 0 && it.percent <= LOW_BATTERY;
@@ -398,7 +430,7 @@ void UpdateWidget() {
         if (!tip.empty()) tip += L"\n";
         tip += e->st.name + L": " + StatusText(*e);
     }
-    if (tip.empty()) tip = L"Wireless Battery: no devices with battery info found";
+    if (tip.empty()) tip = L"Wireless Battery: brak urządzeń z informacją o baterii";
     widget::SetItems(items, tip);
 }
 
@@ -492,25 +524,27 @@ void ShowMenu() {
     ApplyMenuTheme(g_lightTaskbar);
     HMENU m = CreatePopupMenu();
     std::vector<std::wstring> keys;  // menu id ID_DEVICE_FIRST + i -> device key
-    if (g_entries.empty()) AppendMenuW(m, MF_STRING | MF_GRAYED, 0, L"No devices with battery info found");
-    else AppendMenuW(m, MF_STRING | MF_GRAYED, 0, L"Click a device to show or hide it");
+    if (g_entries.empty()) AppendMenuW(m, MF_STRING | MF_GRAYED, 0, L"Nie znaleziono urządzeń z informacją o baterii");
+    else AppendMenuW(m, MF_STRING | MF_GRAYED, 0, L"Kliknij urządzenie, aby je pokazać lub ukryć");
     for (auto& [k, e] : g_entries) {
-        std::wstring line = e.st.name + L":  " + StatusText(e) + L"   [" + e.st.via + L"]";
+        std::wstring line = e.st.name + L": " + StatusText(e) + L" (" + TrVia(e.st.via) + L")";
         AppendMenuW(m, MF_STRING | (IsHidden(k) ? 0 : MF_CHECKED), ID_DEVICE_FIRST + (UINT)keys.size(), line.c_str());
         keys.push_back(k);
     }
-    AppendMenuW(m, MF_STRING | (g_hideLastKnown ? MF_CHECKED : 0), ID_HIDE_LAST_KNOWN, L"Hide last known / asleep devices");
+    AppendMenuW(m, MF_STRING | (g_hideLastKnown ? MF_CHECKED : 0), ID_HIDE_LAST_KNOWN, L"Ukryj urządzenia uśpione i z ostatnią znaną wartością");
     AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
-    AppendMenuW(m, MF_STRING | (g_wantWidget ? MF_CHECKED : 0), ID_MODE_WIDGET, L"Show on the taskbar (icon + percentage)");
-    AppendMenuW(m, MF_STRING | (!g_wantWidget ? MF_CHECKED : 0), ID_MODE_TRAY, L"Show as tray icons");
+    AppendMenuW(m, MF_STRING | (g_wantWidget ? MF_CHECKED : 0), ID_MODE_WIDGET, L"Pokazuj na pasku zadań (ikona + procent)");
+    AppendMenuW(m, MF_STRING | (!g_wantWidget ? MF_CHECKED : 0), ID_MODE_TRAY, L"Pokazuj jako ikony w zasobniku");
     CheckMenuRadioItem(m, ID_MODE_WIDGET, ID_MODE_TRAY, g_wantWidget ? ID_MODE_WIDGET : ID_MODE_TRAY, MF_BYCOMMAND);
     UINT bgFlags = MF_STRING | (g_widgetBackground ? MF_CHECKED : 0) | (g_wantWidget ? 0 : MF_GRAYED);
-    AppendMenuW(m, bgFlags, ID_WIDGET_BACKGROUND, L"Background behind taskbar text (for transparent taskbars)");
+    AppendMenuW(m, bgFlags, ID_WIDGET_BACKGROUND, L"Tło pod tekstem na pasku zadań (dla przezroczystego paska)");
     AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
-    AppendMenuW(m, MF_STRING, ID_REFRESH, L"Refresh now");
-    AppendMenuW(m, MF_STRING | (AutostartEnabled() ? MF_CHECKED : 0), ID_AUTOSTART, L"Start with Windows");
+    AppendMenuW(m, MF_STRING, ID_REFRESH, L"Odśwież teraz");
+    AppendMenuW(m, MF_STRING | (G435AcbPaused() ? MF_CHECKED : 0), ID_PAUSE_G435,
+                L"Wstrzymaj odczyty baterii Logitech G435 (bez przerw w dźwięku)");
+    AppendMenuW(m, MF_STRING | (AutostartEnabled() ? MF_CHECKED : 0), ID_AUTOSTART, L"Uruchamiaj razem z Windows");
     AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
-    AppendMenuW(m, MF_STRING, ID_EXIT, L"Exit");
+    AppendMenuW(m, MF_STRING, ID_EXIT, L"Zakończ");
     POINT pt;
     GetCursorPos(&pt);
     SetForegroundWindow(g_hwnd);
@@ -518,7 +552,14 @@ void ShowMenu() {
     PostMessageW(g_hwnd, WM_NULL, 0, 0);
     DestroyMenu(m);
     switch (cmd) {
-        case ID_REFRESH: SetEvent(g_refreshEvt); break;
+        case ID_REFRESH: G435AcbForceRead(); SetEvent(g_refreshEvt); break;
+        case ID_PAUSE_G435: {
+            bool on = !G435AcbPaused();
+            G435AcbSetPaused(on);
+            SavePauseG435(on);
+            SetEvent(g_refreshEvt);  // update the tooltip right away
+            break;
+        }
         case ID_AUTOSTART: SetAutostart(!AutostartEnabled()); break;
         case ID_HIDE_LAST_KNOWN: SetHideLastKnown(!g_hideLastKnown); break;
         case ID_WIDGET_BACKGROUND: SetWidgetBackground(!g_widgetBackground); break;
@@ -629,16 +670,16 @@ int ListToConsole(bool dump) {
         return 0;
     }
     auto list = PollAllDevices();
-    if (list.empty()) write(L"No devices with battery info found.\n");
+    if (list.empty()) write(L"Nie znaleziono urządzeń z informacją o baterii.\n");
     for (auto& s : list) {
-        std::wstring line = s.name + L"  [" + s.via + L"]  ";
-        if (!s.connected) line += L"off / not connected";
-        else if (s.asleep) line += L"asleep";
-        else if (!s.levelText.empty()) line += s.levelText;
+        std::wstring line = s.name + L"  [" + TrVia(s.via) + L"]  ";
+        if (!s.connected) line += L"wyłączone / niepołączone";
+        else if (s.asleep) line += L"uśpione";
+        else if (!s.levelText.empty()) line += TrLevel(s.levelText);
         else if (s.percent >= 0) line += std::to_wstring(s.percent) + L"%";
-        else line += L"unknown";
+        else line += L"nieznany";
         if (!s.detail.empty()) line += L" (" + s.detail + L")";
-        if (s.charging) line += L", charging";
+        if (s.charging) line += L", ładowanie";
         if (s.millivolts) line += L", " + std::to_wstring(s.millivolts) + L" mV";
         write(line + L"   (" + s.key + L")\n");
     }
@@ -685,6 +726,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR cmdLine, int) {
     g_wantWidget = LoadWidgetMode();
     g_hideLastKnown = LoadHideLastKnown();
     g_widgetBackground = LoadWidgetBackground();
+    G435AcbSetPaused(LoadPauseG435());
     widget::SetBackground(g_widgetBackground);  // remembered by the widget across re-creation
     LoadHidden();
     Reconcile();

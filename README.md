@@ -1,4 +1,21 @@
-# Wireless Battery
+# Wireless Battery (fork)
+
+> **This is a fork of [krisgfx9/Wireless-Device-Battery-Monitor](https://github.com/krisgfx9/Wireless-Device-Battery-Monitor)**,
+> the original project by krisgfx9. All credit for the app and its drivers goes to the original author and the projects
+> listed under [Credits](#credits). For the official version, releases and issues, use the original repository.
+>
+> Changes in this fork:
+> - **No external programs:** the optional HeadsetControl bridge (which ran `headsetcontrol.exe` from the app folder or
+>   `PATH`) is removed, and the installer no longer bundles HeadsetControl. The app never launches other programs and
+>   has no network access.
+> - **Logitech G435 on the older `046D:0ACB` dongle (HDT647)**, ported from
+>   [deddroid/logitech-g435-battery](https://github.com/deddroid/logitech-g435-battery) (MIT). Each read briefly
+>   stops the headset's audio and microphone (about 0.6 s; a limit of the dongle firmware), so it is read once an hour,
+>   and the tray menu can pause reads entirely.
+> - **Polish user interface.**
+>
+> The download links below point to the original project's releases, which do not contain these changes. To get this
+> fork, [build it from source](#build).
 
 Battery levels of your wireless mouse, headset, keyboard and controller, right on the Windows taskbar.
 
@@ -10,7 +27,7 @@ Battery levels of your wireless mouse, headset, keyboard and controller, right o
 
 - **Tiny**: a ~350 KB app using about 2 MB of RAM. It's plain C++/Win32, with no runtime and no background service, and installs in seconds without admin rights.
 - **No vendor software needed**: it talks to the devices directly. G HUB, Synapse, iCUE, GG and NGenuity can stay closed (or keep running; they don't conflict).
-- **Many brands**: Logitech, Razer, SteelSeries, Corsair, HyperX, Glorious, Jabra, JBL, PlayStation and Xbox controllers, Samsung Galaxy Buds, any Bluetooth device Windows knows a battery level for, and every headset the bundled [HeadsetControl](https://github.com/Sapd/HeadsetControl) supports.
+- **Many brands**: Logitech, Razer, SteelSeries, Corsair, HyperX, Glorious, Jabra, JBL, PlayStation and Xbox controllers, Samsung Galaxy Buds and any Bluetooth device Windows knows a battery level for.
 
 ## Display
 
@@ -88,7 +105,6 @@ Hover for details. Click for the menu: every device (click one to hide or show i
 | **Phones (Phone Link)** | Any Android phone linked with Microsoft Phone Link, over Wi-Fi or Bluetooth (tested: Nothing Phone (4a) Pro) | Battery from Phone Link's Windows 11 Start menu card (`StartMenuCompanion.json`); no Bluetooth needed |
 | **Bluetooth** | Anything that shows a battery in *Settings → Bluetooth & devices* (earbuds, headphones, BLE mice and keyboards) | Windows device property |
 | **Generic HID** | Devices reporting the standard HID *Battery Strength* usage | HID usage page 0x06 / 0x85 |
-| **HeadsetControl** | [Every headset it supports](https://github.com/Sapd/HeadsetControl#supported-headsets) (Audeze, Jabra, Sony INZONE, newer Logitech and more) | Bundled; runs `headsetcontrol -o json` |
 
 **Tested on real hardware:** Glorious Model O Wireless, HyperX Cloud III Wireless, Cooler Master MM712 (dongle), Rapoo VT3 Max Gen 2 (receiver `24AE:1417` and USB cable `24AE:4617`; other Rapoo models are untested, see [Rapoo protocol notes](docs/rapoo.md)) Redragon M916 Pro 1K (receiver `3554:F55D`), Redragon M916 Pro 1K (receiver `3554:F55D`), Taidu TSG808 (receiver `3554:F5D5`), Redragon M915RGB-WL (receiver `25A7:FA07`; other Areson models are untested, see [Areson protocol notes](docs/areson.md)), SteelSeries Rival 650 Wireless (receiver `1038:1726` and USB cable `1038:172B`), HECATE G5M PRO (receiver `35BB:D3FB`), WLMouse YING Magnesium (8K receiver `36A7:A874`), ATK N9 Ultra (receiver `373B:1204`), Corsair Scimitar Elite SE Wireless (Slipstream receiver `1B1C:2B00`), DAREU EM901X (receiver `260D:1074`; charging and sleep/wake untested), Jabra Evolve3 75 on a Link 390 (`0B0E:2E51`), MCHOSE G3 V2 (receiver `3837:4245` and USB cable `3837:418C`), AJAZZ AK820 MAX (dongle `05AC:024F`), AirPods Pro 3 (Bluetooth, model `2027`), Sprime PM1 (receiver `1915:AC1C`), MOONDROP GM01 Pro (dongle `35D8:0133`), SteelSeries Arctis Nova Pro Wireless (base station `1038:225D`; battery reading tested, charging and power transitions untested), Delux M800 Pro (receiver `248A:5B2F`), Razer Barracuda X (2022) (receiver `1532:0550`; battery level read, charging transitions untested), Razer BlackShark V3 X (HyperSpeed dongle `1532:057D`), Fantech Helios Go XD5 (dongle `25A7:FA7C`) and Corsair Dark Core RGB Pro SE (Slipstream receiver `1B1C:1BDC`).
 **Implemented from protocol documentation and other projects, not yet tested:** everything else. If you own one of these devices, please report whether it works by [opening an issue](https://github.com/krisgfx9/Wireless-Device-Battery-Monitor/issues).
@@ -99,7 +115,7 @@ Hover for details. Click for the menu: every device (click one to hide or show i
 
 1. Download **`WirelessBattery-Setup-<version>.exe`** from the [latest release](https://github.com/krisgfx9/Wireless-Device-Battery-Monitor/releases/latest).
 2. Run it and click through. It needs **no administrator rights** and **nothing else installed**: no
-   runtimes, no drivers, no vendor apps. HeadsetControl comes bundled.
+   runtimes, no drivers, no vendor apps.
 
 The installer adds a Start menu entry and an uninstaller (*Settings → Apps*), and can start the app
 when you sign in. Prefer no installer? Download `WirelessBattery-<version>-portable.zip`, unzip it
@@ -128,13 +144,8 @@ build.bat       # plain cmd with g++ and windres on PATH
 ```
 
 To build the installer and portable zip, install [Inno Setup](https://jrsoftware.org/isinfo.php) and run
-`powershell -File installer\build-installer.ps1 -Version 1.0.0`. It downloads the pinned
-HeadsetControl release and verifies its checksum. GitHub Actions does all of this automatically:
-pushing a tag like `v1.0.0` publishes a release with the installer, the portable zip and the
-HeadsetControl source (as its GPL license requires).
-
-`WirelessBattery.exe` on its own also works. Without `headsetcontrol.exe` next to it (or on `PATH`) you
-just lose the extra headsets.
+`powershell -File installer\build-installer.ps1 -Version 1.0.0`. GitHub Actions does this automatically:
+pushing a tag like `v1.0.0` publishes a release with the installer and the portable zip.
 
 ## Linux (experimental)
 
@@ -170,7 +181,7 @@ The tray icon works natively on KDE Plasma; GNOME needs an AppIndicator host suc
 (install it plus `linux/wireless-battery.svg` and the binary into `~/.local/`).
 
 Phase 1 covers Logitech, Razer, SteelSeries, Corsair, HyperX, PlayStation, Cooler Master, Glorious
-and the shared Kysona/Pulsar/ATK/G-Wolves protocols. Bluetooth/UPower fallbacks, HeadsetControl and
+and the shared Kysona/Pulsar/ATK/G-Wolves protocols. Bluetooth/UPower fallbacks and
 the remaining vendors are planned follow-up phases.
 
 ## Limitations
@@ -189,7 +200,7 @@ the remaining vendors are planned follow-up phases.
 
 ## How it works
 
-Each vendor driver in [`src/drivers/`](src/drivers) recognises its devices by USB vendor and product ID, and only ever sends read-only battery queries. Unknown devices are never written to. The generic fallbacks (HID battery usage, Bluetooth, XInput, HeadsetControl) only look at devices no vendor driver has claimed.
+Each vendor driver in [`src/drivers/`](src/drivers) recognises its devices by USB vendor and product ID, and only ever sends read-only battery queries. Unknown devices are never written to. The generic fallbacks (HID battery usage, Bluetooth, XInput) only look at devices no vendor driver has claimed.
 
 The taskbar widget is a layered child window of `Shell_TrayWnd`, placed left of `TrayNotifyWnd`. If Explorer restarts, it is re-created.
 
@@ -204,6 +215,7 @@ The protocols come from these projects' research:
 - [OpenRazer](https://github.com/openrazer/openrazer): Razer
 - [Solaar](https://github.com/pwr-Solaar/Solaar) and the Logitech HID++ 2.0 documents: Logitech
 - [g435-battery-percentage](https://github.com/portyporty/g435-battery-percentage) and [logitech-g435-battery](https://github.com/deddroid/logitech-g435-battery): Logitech G435 (`0ADF` dongle)
+- [logitech-g435-battery](https://github.com/deddroid/logitech-g435-battery) (deddroid, MIT) and [endes' research](https://dev.to/endes/usb-hid-down-the-rabbit-hole-logitech-g435-dongle-33if): Logitech G435 (`0ACB` dongle), ported in this fork
 - [rivalcfg](https://github.com/flozz/rivalcfg): SteelSeries mice (Rival Pro from its pull request #294)
 - [glorious-indicator](https://github.com/ikajdan/glorious-indicator) and [glorious-ctl](https://github.com/louis4craft/glorious-ctl): Glorious
 - Hitscan's web configurator ([control.hitscan.com](https://control.hitscan.com)): Hitscan

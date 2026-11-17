@@ -345,8 +345,8 @@ void PollAirPods(PollContext& ctx) {
         int lo = a.left < 0 ? a.right : a.right < 0 ? a.left : (a.left < a.right ? a.left : a.right);
         s.percent = lo;
         s.charging = (a.left < 0 || a.leftChg) && (a.right < 0 || a.rightChg);
-        s.via = L"Bluetooth \x00B7 L " + Pct(a.left) + (a.leftChg ? L"\x26A1" : L"") + L"  R " + Pct(a.right) +
-                (a.rightChg ? L"\x26A1" : L"") + L"  case " + Pct(a.box) + (a.boxChg ? L"\x26A1" : L"");
+        s.via = L"Bluetooth \x00B7 L " + Pct(a.left) + (a.leftChg ? L"\x26A1" : L"") + L"  P " + Pct(a.right) +
+                (a.rightChg ? L"\x26A1" : L"") + L"  etui " + Pct(a.box) + (a.boxChg ? L"\x26A1" : L"");
         s.graceSec = 300;
         ctx.out.push_back(s);
     }

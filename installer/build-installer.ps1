@@ -5,21 +5,6 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
 
-# Bundled HeadsetControl: pinned release, verified against the SHA-256 GitHub publishes for it.
-$hscVersion = "4.3.0"
-$hscSha256  = "e371da043710ddb8fc70af77f2ccad1cd03f8c6f49ba423e08764ad7a94a3c40"
-$hscDir = Join-Path $root "third_party\headsetcontrol"
-$hscExe = Join-Path $hscDir "headsetcontrol.exe"
-New-Item -ItemType Directory -Force $hscDir | Out-Null
-if (-not (Test-Path $hscExe) -or (Get-FileHash $hscExe -Algorithm SHA256).Hash -ne $hscSha256) {
-    Write-Host "Downloading HeadsetControl $hscVersion..."
-    Invoke-WebRequest "https://github.com/Sapd/HeadsetControl/releases/download/$hscVersion/headsetcontrol-windows-x86_64.exe" -OutFile $hscExe
-}
-if ((Get-FileHash $hscExe -Algorithm SHA256).Hash -ne $hscSha256) {
-    Remove-Item $hscExe
-    throw "HeadsetControl checksum mismatch - refusing to bundle it."
-}
-
 if (-not (Test-Path (Join-Path $root "WirelessBattery.exe"))) { throw "Build WirelessBattery.exe first (make or build.bat)." }
 
 $iscc = foreach ($v in 7, 6) {
@@ -35,7 +20,7 @@ if ($LASTEXITCODE -ne 0) { throw "ISCC failed." }
 $stage = Join-Path $root "build\portable"
 Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $stage | Out-Null
-Copy-Item WirelessBattery.exe, $hscExe, installer\THIRD_PARTY_NOTICES.txt $stage
+Copy-Item WirelessBattery.exe, installer\THIRD_PARTY_NOTICES.txt $stage
 Copy-Item LICENSE (Join-Path $stage "LICENSE.txt")
 Compress-Archive -Path "$stage\*" -DestinationPath "dist\WirelessBattery-$Version-portable.zip" -Force
 Write-Host "Done: dist\WirelessBattery-Setup-$Version.exe and dist\WirelessBattery-$Version-portable.zip"
